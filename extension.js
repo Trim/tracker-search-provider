@@ -84,10 +84,6 @@ const TrackerSearchProvider = new Lang.Class({
                 terms_in_sparql += terms[i] + "*";
             }
 
-            /* TODO:
-             *  Technically, the tag should really be matched
-             *  separately not as one phrase too.
-             */
             var nfoFileType = filetype ? filetype : 'FileDataObject';
 
             where = ' WHERE {'
@@ -95,13 +91,14 @@ const TrackerSearchProvider = new Lang.Class({
                         + ' ?urn fts:match "' + terms_in_sparql + '" }'
                         + ' UNION '
                         + '{ ?urn nao:hasTag ?tag . '
-                            + 'FILTER (fn:contains (fn:lower-case (nao:prefLabel(?tag)), "' + terms + '")) }'
-                            + ' OPTIONAL {'
-                                + ' ?urn nfo:belongsToContainer ?parent .'
-                                + ' ?r2 a nfo:Folder .'
-                                + ' FILTER(?r2 = ?urn) .} .'
-
-                        + ' FILTER(!BOUND(?r2)) .'
+                            + 'FILTER (fn:lower-case (nao:prefLabel(?tag)) IN ("' + terms.join('", "') + '"))'
+                        + '}'
+                        + ' tracker:available true .'
+                        + ' OPTIONAL {'
+                            + ' ?urn nfo:belongsToContainer ?parent .'
+                            + ' ?r2 a nfo:Folder .'
+                            + ' FILTER(?r2 = ?urn) .} .'
+                            + ' FILTER(!BOUND(?r2)) .'
                         + '}';
 
             /* TODO:
