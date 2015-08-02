@@ -39,7 +39,8 @@ const ICON_SIZE = 64;
 const CategoryType = {
     FTS : 0,
     FILES : 1,
-    FOLDERS : 2
+    FOLDERS : 2,
+    TAGS : 3
 };
 
 var trackerSearchProviderFiles = null;
@@ -119,8 +120,14 @@ const TrackerSearchProvider = new Lang.Class({
                         + ' ?urn nfo:belongsToContainer ?parent ;'
                         + ' tracker:available true .'
                         + '}';
+        } else if (this._categoryType == CategoryType.TAGS) {
+            where = ' WHERE {'
+                        + '?urn nao:hasTag ?tag .'
+                        + ' FILTER (fn:lower-case (nao:prefLabel(?tag)) IN ("' + terms.join('", "') + '")) .'
+                        + ' ?urn nfo:belongsToContainer ?parent ;'
+                        + ' tracker:available true .'
+                        + '}';
         }
-
         return select + where + order;
     },
 
@@ -239,14 +246,27 @@ const TrackerSearchProvider = new Lang.Class({
                 return [];
             }
             
-            if(terms[0].lastIndexOf("v",0) === 0) {
-                var filetype = "Video";
-            }
-            if(terms[0].lastIndexOf("m",0) === 0) {
-                var filetype = "Audio";
-            }
-            if(terms[0].lastIndexOf("i",0) === 0) {
-                var filetype = "Image";
+            // Keyword switch if first term is a char
+            if(terms[0].length == 1){
+                switch (terms[0]){
+                    case "v" :
+                        var filetype = "Video";
+                        break;
+                    case "m" :
+                        var filetype = "Audio";
+                        break;
+                    case "i" :
+                        var filetype = "Image";
+                        break;
+                    case "t" :
+                        var filetype = null; // Tags aren't a Tracker filetype.
+                        this._categoryType = CategoryType.TAGS;
+                        break;
+                    default :
+                         var filetype = null;
+                }
+                
+                terms.shift();
             }
 
         }
