@@ -149,6 +149,68 @@ const TrackerSearchProvider = new Lang.Class({
         };
     },
 
+    _parseTerms: function(terms){
+        var escapedTerms = Array();
+
+        // terms holds array of search items
+        // check if 1st search term is >2 letters else drop the request
+        if(terms.length === 1 && terms[0].length < 3) {
+            escapedTerms = null;
+        }
+
+        if(escapedTerms){
+            // check if search starts with keyword: m (=music), i (=images), v (=videos), t(=tags)
+            if(terms.length > 1) {
+                if(terms[1].length < 3) {
+                    escapedTerms = null;
+        }
+
+        if(escapedTerms){
+            // Keyword switch if first term is a escapedTermschar
+            if(terms[0].length == 1){
+                switch (terms[0]){
+                    case "v" :
+                        var filetype = "Video";
+                        break;
+                    case "m" :
+                        var filetype = "Audio";
+                        break;
+                    case "i" :
+                        var filetype = "Image";
+                        break;
+                    case "t" :
+                        var filetype = null; // Tags aren't a Tracker filetype.
+                        this._categoryType = CategoryType.TAGS;
+                        break;
+                    default :
+                         var filetype = null;
+                }
+
+                terms.shift();
+            }
+
+            // Find escaped spaces
+            for (var key in terms){
+                var value = terms[key];
+
+                backslashPos = value.indexOf('\\')
+                if(backslashPos == value.length-1) // Gnome-Shell splits search string on spaces
+                {
+                    escapedTerms.push(value.slice(1,) + ' ' + terms[key+1]);
+                }else{
+                    escapedTerms.push(value)
+                }
+            }
+
+            // Use Tracker's escape code to escape all others special chars
+            for (var element of escapedTerms){
+                element = Tracker.Sparql.escape_string(element)
+            }
+        }
+
+        return escapedTerms;
+    }
+
     getResultMetas: function(resultIds, callback) {
         let metas = [];
         for (let i = 0; i < resultIds.length; i++) {
@@ -162,7 +224,7 @@ const TrackerSearchProvider = new Lang.Class({
         // Action executed when clicked on result
         var f = Gio.file_new_for_uri(uri);
         var fileName = "\"" + f.get_path() + "\"" ; // double quotes ensure to be able to read files / directories with spaces in name
-		Util.trySpawnCommandLine( DEFAULT_EXEC + " " + fileName);
+        Util.trySpawnCommandLine( DEFAULT_EXEC + " " + fileName);
     },
 
     _getResultSet: function (obj, result, callback) {
@@ -231,41 +293,10 @@ const TrackerSearchProvider = new Lang.Class({
     },
 
     getInitialResultSet : function(terms, callback, cancellable) {
-        // terms holds array of search items
-        // check if 1st search term is >2 letters else drop the request
-        if(terms.length ===1 && terms[0].length < 3) {
-            return [];
-        }
+        terms = this._parseTerms(terms)
 
-        // check if search starts with keyword: m (=music), i (=images), v (=videos)
-        if(terms.length > 1) {
-            if(terms[1].length < 3) {
-                return [];
-            }
-            
-            // Keyword switch if first term is a char
-            if(terms[0].length == 1){
-                switch (terms[0]){
-                    case "v" :
-                        var filetype = "Video";
-                        break;
-                    case "m" :
-                        var filetype = "Audio";
-                        break;
-                    case "i" :
-                        var filetype = "Image";
-                        break;
-                    case "t" :
-                        var filetype = null; // Tags aren't a Tracker filetype.
-                        this._categoryType = CategoryType.TAGS;
-                        break;
-                    default :
-                         var filetype = null;
-                }
-                
-                terms.shift();
-            }
-
+        if(!terms){
+            return[]
         }
 
         try {
